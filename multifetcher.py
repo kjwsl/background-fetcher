@@ -6,27 +6,34 @@ from concurrent.futures import ThreadPoolExecutor
 from bs4 import BeautifulSoup
 
 class WallpaperFlareImageFetcher:
-    base_url = r"https://wallpaperflare.com/search?wallpaper="
+    base_url = r"https://wallpaperflare.com/"
+    query_url = r"https://wallpaperflare.com/search?wallpaper="
 
     def __init__(self, max_workers=10):
         self.executor = ThreadPoolExecutor(max_workers=max_workers)
 
     @functools.lru_cache(maxsize=5000)
     def download_image(self, url: str, query: str):
-        print(f"Downloading from {url}")
+        filename = url.split("/")[-1]
+
+        print(f"Downloading from {filename}")
         response = requests.get(url)
         if response.status_code == 200:
             out_path = f"downloads/{query}"
             Path(out_path).mkdir(parents=True, exist_ok=True)
-            with open(f"{out_path}/{url.split('/')[-1]}", "wb") as file:
+            with open(f"{out_path}/{filename}", "wb") as file:
                 file.write(response.content)
         else:
             print(f"Failed to download {url} - status code: {response.status_code}")
 
     def fetch_image_urls(self, query: str):
         print("Fetching images...")
-        url = self.base_url + urllib.parse.quote(query)
+        url = self.query_url + urllib.parse.quote(query)
         ret = requests.get(url)
+        if ret.url == self.base_url:
+            print("No Image Found")
+            return
+        
         soup = BeautifulSoup(ret.text, "html.parser")
         atags = soup.find_all("a", attrs={"itemprop": "url"})
         image_urls = []
